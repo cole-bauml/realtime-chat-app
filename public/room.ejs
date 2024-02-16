@@ -1,0 +1,320 @@
+<%- include('nav.ejs') -%>
+    <div class="page-content">
+        <div class="app" style="display: none;" id="app-content" style="display: none;">
+            <h1 class="welcome-title" id="name">Room Title by Cole Bauml</h1>
+            <div class="messages" id="messagesContainer">
+                <div class="messageID">
+                    <img class="user-icon" src="/timmy-bot-avatar.png" alt="User Icon">
+                    <div class="message-content">
+                        <h3 class="message-name">Timmy (Bot) - <%- currentTime -%></h3>
+                        <p class="message">Welcome to your chat room! Send messages and share your code to get started.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <input type="text" id="input" class="input action-input" name="message" placeholder="Enter your message">
+            <button class="send-button action-button" id="send-button" disabled>Send</button><br><br>
+            <p class="welcome-description" id="typing" style="display: none;">---- is typing...</p>
+        </div>
+        <div class="invalidCode" id="username-picker" style="display: none;">
+            <h1 class="welcome-title">Pick a Username</h1>
+            <input type="text" id="usernameInput" class="input action-input" name="message"
+                placeholder="Enter your username">
+            <button class="submit-button action-button" id="submit-button">Submit</button>
+        </div>
+        <div class="invalid-room" id="invalid-room-container" style="display: none;">
+            <h1 class="welcome-title">Can't join that room...</h1>
+            <p class="welcome-description" id="join-error">Try again or chose a different room</p>
+            <button class="submit-button action-button" id="go-home-button">Go Home</button>
+        </div>
+        <div id="users-container" style="display: none;">
+            <h1 class="welcome-title">Active Users</h1>
+            <p class="welcome-description" id="users-list">Loading....</p>
+
+        </div><br>
+        <button class="submit-button action-button" style="display: none;" id="leave-chat-button"><a href="/">Leave Chat</a></button><br>
+        <button class="submit-button action-button" id="changeUsername" style="display: none;">Change Username</button>
+
+    </div>
+    <script>
+// Define different html elements into variables
+        var roomName = document.getElementById('name')
+        var username = localStorage.getItem('chat-username')
+        var messageInput = document.getElementById('input');
+        var sendButton = document.getElementById('send-button')
+        var setUsernameButton = document.getElementById('submit-button');
+        var messagesContainer = document.getElementById('messagesContainer')
+        var usernameContainer = document.getElementById('username-picker')
+        var appContainer = document.getElementById('app-content');
+        var invalidRoomContainer = document.getElementById('invalid-room-container')
+        var goHomeButton = document.getElementById('go-home-button')
+        var typingMessage = document.getElementById('typing');
+        var usersList = document.getElementById('users-list')
+        var changeUsernameButton = document.getElementById('changeUsername')
+        var leaveChatButton = document.getElementById('leave-chat-button');
+
+        // Define javascript variables
+        var currentlyTyping;
+        var hasConnected = false;
+        var connected = false;
+
+        // Retrieve url parameters and define roomID
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomID = urlParams.get('room');
+
+        // Define helper function to set username in local storage
+        function setUsername() {
+            localStorage.setItem('chat-username', document.getElementById('usernameInput').value)
+        }
+
+        // Define event listener to call setUsername helper function
+        setUsernameButton.addEventListener('click', function () {
+            // Call helper function
+            setUsername()
+            // Reload page
+            location.reload();
+        })
+
+        // Define helper function to go home
+        goHomeButton.style.display = 'unset'
+        goHomeButton.addEventListener('click', function () {
+            // Redirect to home
+            location.href = "/"
+        })
+
+        function init() {
+            // If user has already set a username, 
+            if (username) {
+                // Hide all elements
+                usernameContainer.style.display = 'none'
+                appContainer.style.display = 'none';
+                invalidRoomContainer.style.display = 'none'
+
+                // Request to join room from server
+                socket.emit('join', roomID, username)
+                console.log("Attempting to join room: " + roomID)
+
+                // Define helper function to send message
+                function sendMessage() {
+                    var message = messageInput.value; // Get message content from message input
+                    // Define message information in an object to send to the server
+                    var data = {
+                        message,
+                        roomID,
+                        username
+                    }
+                    // Send message object to the server
+                    socket.emit('send-message', data)
+                    // Remove all text from the input box, and disable the send button
+                    messageInput.value = ""
+                    sendButton.disabled = true;
+                }
+
+                // Add event listener to the send message button to run sendMessage helper function
+                sendButton.addEventListener('click', function () {
+                    sendMessage(); // Run send message helper function
+                })
+
+                // Add logic to refresh the page if reconnected to server
+                socket.on('connect', function () {
+                    // Triggered upon connection to the server
+
+                    // If user has previously connected, refresh the page
+                    if (hasConnected) {
+                        // User has previously connected
+                        location.reload() // Refresh the page
+                    }
+                    else {
+                        // User has not previously connected, do not refresh the page
+                        console.log("Socket has connected to the server.")
+                        hasConnected = true; // Define hasConnected variable
+                    }
+                })
+
+                // Server has sent users
+                socket.on('users', (usersInRoom) => {
+                    document.getElementById('users-container').style.display = 'unset'
+                    usersList.innerText = ''
+                    console.log(usersInRoom[0].username)
+                    var isFirst = true;
+                    Object.entries(usersInRoom).forEach((user) => {
+                        console.log(user);
+                        if (isFirst) {
+                            usersList.innerText += user[1].username
+                            isFirst = false
+                        }
+                        else {
+                            usersList.innerText += `, ${user[1].username}`
+                        }
+
+
+                    });
+                })
+
+                // Server has notified that requested room is invalid
+                socket.on('invalid-room', (error) => {
+                    console.log("Error joining room: " + error)
+
+                    // Display join error and set html contents
+                    document.getElementById('join-error').innerText = error
+                    invalidRoomContainer.style.display = 'unset'
+
+                    // Hide app container and username container
+                    appContainer.style.display = 'none';
+                })
+
+                // Server has notified that you successfully joined the room
+                socket.on('joined', (info) => {
+                    console.log("Successfully joined the room.")
+
+                    // Display room name in the app container
+                    roomName.innerText = info.name;
+
+                    // Log room info for debug
+                    console.log(info)
+
+                    // Define connected variable
+                    connected = true;
+
+                    // Request room messages from the server to display
+                    socket.emit('request-messages', roomID)
+
+                    // Event listener for change username button
+                    changeUsernameButton.style.display = 'unset'
+                    changeUsernameButton.addEventListener('click', function () {
+                        localStorage.setItem('chat-username', '');
+                        location.reload();
+                    })
+
+                    leaveChatButton.style.display = 'unset'
+
+                })
+
+                // Server has notified that a new message has been sent.
+                socket.on('new-message', (serverVar) => {
+                    // Retrieve the message from the server
+                    var message = serverVar.clientMessage;
+
+                    // Check if message sender is typing, and if they are, stop showing typing notification
+                    if (currentlyTyping == message.username) {
+                        typingMessage.style.display = 'none'; // Stop showing typing notification
+                    }
+                    // Define message html from the server variable information
+                    var html = `
+                <div class="messageID">
+                    <div class="message-content">
+                        <h3 class="message-name">${message.username} - ${message.timestamp}</h3>
+                        <p class="message">${message.message}</p>
+                    </div>
+                </div>
+                    `;
+                    messagesContainer.insertAdjacentHTML('beforeend', html) // Insert the server message html into the messages container before the end
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight; // Scroll to the bottom of the messages container
+
+                })
+
+                // Server has approved messages fetch, and has sent them to this client
+                socket.on('messages', (messages) => {
+                    // For each message create a element in the messages container
+                    Object.values(messages).forEach(message => {
+                        // Define message html from the server variable information
+                        var html = `
+                    <div class="messageID">
+                        <div class="message-content">
+                            <h3 class="message-name">${message.username} - ${message.timestamp}</h3>
+                            <p class="message">${message.message}</p>
+                        </div>
+                    </div>
+                        `;
+                        messagesContainer.insertAdjacentHTML('beforeend', html) // Insert the server message html into the messages container before the end
+                    })
+
+                    // Add event listener to check for content in the message input
+                    messageInput.addEventListener('input', () => {
+                        // If connected to the chat and message input is not blank, enable the send button
+                        if (messageInput.value && connected == true) {
+                            sendButton.disabled = false; // Enable the send button
+                        }
+                        else {
+                            // Not all requirments are met, disable the send button
+                            sendButton.disabled = true; // Disable the send button
+                        }
+
+                    })
+                    appContainer.style.display = 'unset'; // Display the app container once all nessessary information has been fetched
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight; // Scroll to the bottom of the messages container
+                })
+
+                // Server has notified there is an error sending message
+                socket.on('message-send-error', () => {
+                    console.log("Error sending message") // Log for debug
+                })
+
+                var typingTimeout; // Define helper variable for a javascript timeout that hides typing notification after a given ammount of time
+
+                // Server has notified that someone has started typing
+                socket.on('typing', (username) => {
+
+                    // Display typing message
+                    typingMessage.innerText = `${username} is typing...`
+                    currentlyTyping = username;
+                    typingMessage.style.display = 'unset';
+
+                    // If somebody was previously typing, clear the timeout and reset with the new user
+                    if (typingTimeout) {
+                        clearTimeout(typingTimeout);
+                    }
+
+                    // Reset the timeout with the new user
+                    typingTimeout = setTimeout(function () {
+                        typingMessage.style.display = 'none'; // After 10 seconds, hide the typing message
+                    }, 10000)
+                })
+
+                // Timmy Bot Message has Been Triggered
+                socket.on('timmy-bot-message', (message) => {
+                    console.log("Timmy bot message", message);
+                    if (message.username != username) {
+                        var contents = message.contents;
+                        var timestamp = message.timestamp;
+                        var html = `
+                    <div class="messageID">
+                    <img class="user-icon" src="/timmy-bot-avatar.png" alt="User Icon">
+                    <div class="message-content">
+                        <h3 class="message-name">Timmy (Bot) - ${timestamp}</h3>
+                        <p class="message">${contents}</p>
+                    </div>
+                    </div>
+                    `;
+                        messagesContainer.insertAdjacentHTML('beforeend', html);
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    }
+
+                })
+
+                // Define event listener that on input of the message input notifies the server you are typing
+                messageInput.addEventListener("keydown", function (event) {
+                    // Check that input is not the enter key
+                    if (event.keyCode != 13) {
+                        socket.emit('typing', username, roomID) // Notify the server you are typing
+                    }
+
+                    // Check if the input is the enter key
+                    if (event.keyCode === 13) {
+                        sendMessage() // User is attempting to send message, run the sendMessage helper function
+                    }
+                });
+            } else {
+                // User does not have a username, show the set username container
+
+                usernameContainer.style.display = 'unset'
+                appContainer.style.display = 'none';
+            }
+        }
+
+        // Initialize the app
+        init();
+
+
+
+    </script>

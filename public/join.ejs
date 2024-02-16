@@ -1,0 +1,38 @@
+<%- include('nav.ejs') -%>
+    <div class="page-content">
+        <div class="invalidCode" id="username-picker">
+            <h1 class="welcome-title">Enter join code...</h1>
+            <p class="welcome-description" id="error-message" style="display: none;">Error</p><br>
+            <input type="text" id="roomInput" class="input action-input" name="message" placeholder="Code">
+            <button class="submit-button action-button" id="submit-button">Submit</button>
+        </div>
+
+    </div>
+    <script>
+        // Define different html elements into variables
+        var submitButton = document.getElementById('submit-button');
+        var roomInput = document.getElementById('roomInput')
+        var errorMessage = document.getElementById('error-message');
+
+        // Define event listener for submit button
+        submitButton.addEventListener('click', function () {
+            // Define room ID
+            var roomID = roomInput.value;
+            // Request verification from server that room exists
+            socket.emit('check-room', roomID)
+        })
+
+        // Server has notified that room exists
+        socket.on('room-approved', (roomID) => {
+            // Redirect to room
+            location.href = "/chat?room=" + roomID
+        })
+
+        // Server has notified that room is invalid (does not exist or error)
+        socket.on('invalid-room', (error) => {
+            // Display error message
+            errorMessage.innerText = error;
+            errorMessage.style.display = 'unset'
+        })
+
+    </script>

@@ -1,0 +1,37 @@
+{
+  "name": "realtime-chat-app",
+  "version": "1.0.0",
+  "description": "Realtime chat app with rooms.",
+  "main": "server.js",
+  "scripts": {
+    "devStart": "nodemon server.js",
+    "prod": "forever server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cole-bauml/Realtime-Chat-App.git"
+  },
+  "keywords": [
+    "Chat",
+    "Realtime",
+    "Free"
+  ],
+  "author": "Cole Bauml",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/cole-bauml/Realtime-Chat-App/issues"
+  },
+  "homepage": "https://github.com/cole-bauml/Realtime-Chat-App#readme",
+  "type": "commonjs",
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "ejs": "^3.1.9",
+    "express": "^4.18.2",
+    "mongoose": "^8.0.3",
+    "socket.io": "^4.7.3"
+  },
+  "devDependencies": {
+    "forever": "^4.0.3",
+    "nodemon": "^3.0.2"
+  }
+}

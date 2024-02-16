@@ -1,0 +1,43 @@
+<%- include('nav.ejs') -%>
+    <div class="page-content">
+        <div>
+            <h1 class="welcome-title">Create a Room</h1>
+            <p class="welcome-description" id="error-message" style="display: none;">Error</p><br>
+            <input type="text" id="roomNameInput" class="input action-input" placeholder="Room Name"><br>
+            <input type="text" id="codeInput" class="input action-input" placeholder="Room Code"><br>
+            <button class="submit-button action-button" id="submit-button">Submit</button>
+        </div>
+
+    </div>
+    <script>
+        // Define different html elements into variables
+        var roomNameInput = document.getElementById('roomNameInput');
+        var codeInput = document.getElementById('codeInput');
+        var submitButton = document.getElementById('submit-button');
+        var errorMessage = document.getElementById('error-message');
+
+        // Run on click of submit button
+        submitButton.addEventListener('click', function () {
+            // Define variable with room information to send to server
+            var roomData = {
+                roomID: codeInput.value,
+                name: roomNameInput.value
+            }
+            // Request to create room to server
+            socket.emit('create-room', roomData)
+        })
+
+        // Server has notified that room has been created
+        socket.on('created', (code) => {
+            // Redirect to created room
+            location.href = `/chat?room=${code}`
+        })
+
+        // Server has notified that there is an error creating the room
+        socket.on('error-creating', (error) => {
+            // Display error
+            errorMessage.innerText = error;
+            errorMessage.style.display = 'unset'
+        })
+
+    </script>
