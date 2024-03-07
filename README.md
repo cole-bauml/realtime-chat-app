@@ -3,7 +3,7 @@
 
 ## This chatroom includes
 - **Realtime delivery**
-- **Typing messages (____ is typing...)
+- **Typing messages (____ is typing...)**
 - **Join and create rooms**
 - **Change and create username**
 - **Much more**
